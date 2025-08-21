@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tareas de Claudia y Xoel — Prototipo (con guardado)</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#0b1229; --muted:#94a3b8; --text:#e5e7eb;
+      --accent:#22d3ee; --accent-2:#a78bfa; --danger:#ef4444;
+      --shadow: 0 10px 25px rgba(0,0,0,.35); --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto; background: var(--bg); color: var(--text)}
+    header{position:sticky; top:0; z-index:10; background: rgba(15,23,42,.9); border-bottom:1px solid rgba(255,255,255,.1)}
+    .container{max-width:1100px; margin:0 auto; padding:18px}
+    .brand{display:flex; align-items:center; gap:12px}
+    .brand h1{margin:0; font-size:20px}
+    .pill{padding:6px 10px; border-radius:999px; font-size:12px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color:#0f172a; font-weight:700}
+    nav{display:flex; gap:10px; align-items:center; margin-left:auto}
+    .tab{padding:10px 14px; border-radius:12px; cursor:pointer; border:1px solid rgba(255,255,255,.1); background:rgba(17,24,39,.6)}
+    .tab.active{border-color:rgba(255,255,255,.3); background:rgba(17,24,39,.9)}
+    .grid{display:grid; grid-template-columns: repeat(12, 1fr); gap:16px}
+    .card{grid-column: span 12; background: var(--card); border:1px solid rgba(255,255,255,.1); border-radius: var(--radius); padding:16px; box-shadow: var(--shadow)}
+    @media(min-width:720px){.card.s6{grid-column: span 6} .card.s4{grid-column: span 4} .card.s12{grid-column: span 12}}
+    h2{margin:0 0 8px 0; font-size:20px}
+    p{color: var(--muted); margin:0}
+    .btn{border:none; cursor:pointer; border-radius:12px; padding:10px 14px; background:var(--accent); color:#0f172a; font-weight:700}
+    .btn.secondary{background:var(--accent-2); color:#fff}
+    .btn.danger{background:var(--danger); color:#fff}
+    .list{display:flex; flex-direction:column; gap:10px; margin-top:10px}
+    .row{display:grid; grid-template-columns:2fr 1fr auto; gap:10px; margin-top:10px}
+    .row-reward{display:grid; grid-template-columns:2fr 1fr auto; gap:10px; margin-top:10px}
+    .item{display:flex; align-items:center; justify-content:space-between; padding:8px; border-radius:10px; background:rgba(255,255,255,.05)}
+    label{font-size:12px; color:var(--muted)}
+    .input{width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.05); color:var(--text)}
+    .ghost{background:transparent; border:1px solid rgba(255,255,255,.2); color:var(--text)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container" style="display:flex; align-items:center; gap:14px">
+      <div class="brand">
+        <div class="pill">PROTOTIPO</div>
+        <h1>Gestor de Tareas — Claudia & Xoel</h1>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="inicio">Inicio</button>
+        <button class="tab" data-tab="admin">👨‍👩‍👧‍👦 Panel de padres</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="view-inicio" class="grid">
+      <div class="card s6">
+        <h2>Claudia</h2>
+        <p class="muted">10 años</p>
+        <button class="btn" onclick="openChild('claudia')">Abrir panel</button>
+      </div>
+      <div class="card s6">
+        <h2>Xoel</h2>
+        <p class="muted">8 años</p>
+        <button class="btn" onclick="openChild('xoel')">Abrir panel</button>
+      </div>
+      <div class="card s12">
+        <h2>Recompensas rápidas</h2>
+        <div class="list" id="quick-rewards"></div>
+      </div>
+      <div class="card s12">
+        <h2>🔑 Acceso de padres</h2>
+        <p class="muted">Configura tareas, recompensas y sincronización.</p>
+        <button class="btn secondary" onclick="switchTab('admin')">Ir al Panel de padres</button>
+      </div>
+    </section>
+
+    <section id="view-child" class="grid" style="display:none"></section>
+
+    <section id="view-admin" class="grid" style="display:none">
+      <div class="card s12">
+        <h2>Tareas</h2>
+        <div class="list" id="admin-tasks"></div>
+        <div class="row">
+          <input id="task-name" class="input" placeholder="Nueva tarea" />
+          <input id="task-points" class="input" type="number" placeholder="Puntos" />
+          <button class="btn" onclick="addTask()">Añadir</button>
+        </div>
+      </div>
+      <div class="card s12">
+        <h2>Recompensas</h2>
+        <div class="list" id="admin-rewards"></div>
+        <div class="row-reward">
+          <input id="reward-name" class="input" placeholder="Nueva recompensa" />
+          <input id="reward-cost" class="input" type="number" placeholder="Coste en ⭐" />
+          <button class="btn" onclick="addReward()">Añadir</button>
+        </div>
+      </div>
+      <div class="card s12">
+        <h2>Sincronización (Google Sheets)</h2>
+        <div class="row" style="grid-template-columns: 1fr auto auto;">
+          <input id="sync-url" class="input" placeholder="Pega aquí la URL del Web App" />
+          <button class="btn" onclick="saveSyncUrl()">Guardar URL</button>
+          <button class="btn ghost" onclick="downloadData()">Cargar</button>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap">
+          <button class="btn" onclick="uploadData()">Subir a Sheets</button>
+          <button class="btn danger" onclick="clearAll()">Borrar TODO (local)</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Hecho con 💙 para Claudia y Xoel · Datos guardados en este navegador (LocalStorage)</footer>
+
+  <script>
+    // ====== Estado + Persistencia ======
+    const STORAGE_KEY = 'tx_tasks_proto_v3';
+    const uid = () => Math.random().toString(36).slice(2,9);
+    let state = { tasks: [], rewards: [], syncUrl: '' };
+
+    function loadState(){
+      try{ const raw = localStorage.getItem(STORAGE_KEY); if(raw){ state = JSON.parse(raw); } }catch(e){ console.warn('No se pudo cargar estado', e); }
+    }
+    function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    // ====== Navegación ======
+    function switchTab(tab){
+      document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('main > section').forEach(sec => sec.style.display='none');
+      const tabBtn = document.querySelector(`.tab[data-tab="${tab}"]`);
+      if(tabBtn) tabBtn.classList.add('active');
+      const view = document.getElementById(`view-${tab}`);
+      if(view) view.style.display = 'grid';
+      if(tab==='admin') renderAdmin();
+      if(tab==='inicio') renderHome();
+    }
+    document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+
+    // ====== Panel de niño ======
+    const CHILD_NAMES = { claudia:'Claudia', xoel:'Xoel' };
+    function openChild(kid){
+      const name = CHILD_NAMES[kid] || kid;
+      // Oculta otras vistas y muestra child
+      document.getElementById('view-inicio').style.display = 'none';
+      document.getElementById('view-admin').style.display = 'none';
+      const childView = document.getElementById('view-child');
+      childView.style.display = 'grid';
+
+      // Render mínimo del panel de niño usando las tareas existentes
+      childView.innerHTML = '';
+      const header = document.createElement('div');
+      header.className = 'card s12';
+      header.innerHTML = `<h2>Panel de ${name}</h2><p class="muted">Aquí verás sus tareas y recompensas.</p>`;
+      childView.appendChild(header);
+
+      const tasksCard = document.createElement('div');
+      tasksCard.className = 'card s12';
+      tasksCard.innerHTML = `<h2>Tareas</h2><div class="list" id="child-task-list"></div>`;
+      childView.appendChild(tasksCard);
+
+      const tl = tasksCard.querySelector('#child-task-list');
+      if(!state.tasks.length){
+        const empty = document.createElement('div');
+        empty.className = 'item';
+        empty.innerHTML = '<span class="muted">Añade tareas desde el Panel de padres</span>';
+        tl.appendChild(empty);
+      } else {
+        state.tasks.forEach(t => {
+          const row = document.createElement('div');
+          row.className = 'item';
+          row.innerHTML = `<span>${t.name} (${t.points}⭐)</span>`;
+          tl.appendChild(row);
+        });
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'card s12';
+      actions.innerHTML = `<button class="btn ghost" onclick="switchTab('inicio')">Volver</button>`;
+      childView.appendChild(actions);
+    }
+
+    // ====== Render ======
+    function renderAdmin(){
+      // tareas
+      const tList = document.getElementById('admin-tasks');
+      tList.innerHTML = '';
+      if(state.tasks.length===0){ tList.innerHTML = '<div class="item"><span class="muted">Aún no hay tareas</span></div>'; }
+      state.tasks.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `<span>${t.name} (${t.points}⭐)</span>`;
+        const del = document.createElement('button');
+        del.className='btn danger'; del.textContent='Eliminar'; del.onclick=()=>{ removeTask(t.id); };
+        row.appendChild(del); tList.appendChild(row);
+      });
+
+      // recompensas
+      const rList = document.getElementById('admin-rewards');
+      rList.innerHTML = '';
+      if(state.rewards.length===0){ rList.innerHTML = '<div class="item"><span class="muted">Aún no hay recompensas</span></div>'; }
+      state.rewards.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `<span>${r.name} (${r.cost}⭐)</span>`;
+        const del = document.createElement('button');
+        del.className='btn danger'; del.textContent='Eliminar'; del.onclick=()=>{ removeReward(r.id); };
+        row.appendChild(del); rList.appendChild(row);
+      });
+
+      // sync URL
+      document.getElementById('sync-url').value = state.syncUrl || '';
+    }
+
+    function renderHome(){
+      // muestra recompensas rápidas basadas en state.rewards
+      const q = document.getElementById('quick-rewards');
+      q.innerHTML = '';
+      if(state.rewards.length===0){ q.innerHTML = '<div class="item"><span class="muted">Añade recompensas en el Panel de padres para verlas aquí</span></div>'; return; }
+      state.rewards.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `<span>${r.name} — <span class="muted">${r.cost}⭐</span></span>`;
+        q.appendChild(row);
+      });
+    }
+
+    // ====== Acciones ======
+    function addTask(){
+      const name = document.getElementById('task-name').value.trim();
+      const pts = parseInt(document.getElementById('task-points').value,10);
+      if(!name || isNaN(pts) || pts<=0){ alert('Pon un nombre y puntos (>0)'); return; }
+      state.tasks.push({ id: uid(), name, points: pts });
+      saveState();
+      document.getElementById('task-name').value='';
+      document.getElementById('task-points').value='';
+      renderAdmin();
+    }
+    function removeTask(id){ state.tasks = state.tasks.filter(t=>t.id!==id); saveState(); renderAdmin(); }
+
+    function addReward(){
+      const name = document.getElementById('reward-name').value.trim();
+      const cost = parseInt(document.getElementById('reward-cost').value,10);
+      if(!name || isNaN(cost) || cost<=0){ alert('Pon una descripción y coste (>0)'); return; }
+      state.rewards.push({ id: uid(), name, cost });
+      saveState();
+      document.getElementById('reward-name').value='';
+      document.getElementById('reward-cost').value='';
+      renderAdmin(); renderHome();
+    }
+    function removeReward(id){ state.rewards = state.rewards.filter(r=>r.id!==id); saveState(); renderAdmin(); renderHome(); }
+
+    function saveSyncUrl(){ state.syncUrl = (document.getElementById('sync-url').value||'').trim(); saveState(); alert('URL guardada'); }
+    async function uploadData(){ alert('Subida a Sheets pendiente: usa fetch(state.syncUrl, {method:"POST", body: JSON.stringify({action:"save", data: state})})'); }
+    async function downloadData(){ alert('Descarga de Sheets pendiente: usa fetch(state.syncUrl+"?action=load").then(r=>r.json())'); }
+
+    function clearAll(){ if(confirm('¿Seguro que quieres borrar todo lo guardado en este navegador?')){ localStorage.removeItem(STORAGE_KEY); state = {tasks:[], rewards:[], syncUrl:''}; renderAdmin(); renderHome(); } }
+
+    // ====== Self-tests (no destructivos) ======
+    function runSelfTests(){
+      const results = [];
+      try { results.push(['openChild existe', typeof window.openChild === 'function']); } catch(e){ results.push(['openChild existe', false, e]); }
+      try { results.push(['switchTab existe', typeof window.switchTab === 'function']); } catch(e){ results.push(['switchTab existe', false, e]); }
+      try {
+        const inicio = getComputedStyle(document.getElementById('view-inicio')).display;
+        switchTab('admin');
+        const adminDisp = getComputedStyle(document.getElementById('view-admin')).display;
+        switchTab('inicio');
+        const inicio2 = getComputedStyle(document.getElementById('view-inicio')).display;
+        results.push(['switchTab muestra/oculta secciones', adminDisp !== 'none' && inicio2 !== 'none']);
+      } catch(e){ results.push(['switchTab muestra/oculta secciones', false, e]); }
+      try {
+        openChild('claudia');
+        const childDisp = getComputedStyle(document.getElementById('view-child')).display;
+        const hasName = document.getElementById('view-child').textContent.includes('Claudia');
+        switchTab('inicio');
+        results.push(['openChild renderiza vista', childDisp !== 'none' && hasName]);
+      } catch(e){ results.push(['openChild renderiza vista', false, e]); }
+      console.group('Self-tests');
+      results.forEach(([name, ok, err])=> ok ? console.log('✔', name) : console.error('✘', name, err||''));
+      console.groupEnd();
+    }
+
+    // ====== Init ======
+    loadState();
+    renderHome();
+    runSelfTests();
+    // mantiene la pestaña Inicio activa al cargar
+  </script>
+</body>
+</html>
