@@ -56,12 +56,12 @@
     <section id="view-inicio" class="grid">
       <div class="card s6">
         <h2>Claudia</h2>
-        <p class="muted">10 años</p>
+        <p class="muted">10 años · ⭐ <span id="points-claudia">0</span></p>
         <button class="btn" onclick="openChild('claudia')">Abrir panel</button>
       </div>
       <div class="card s6">
         <h2>Xoel</h2>
-        <p class="muted">8 años</p>
+        <p class="muted">8 años · ⭐ <span id="points-xoel">0</span></p>
         <button class="btn" onclick="openChild('xoel')">Abrir panel</button>
       </div>
       <div class="card s12">
@@ -117,10 +117,13 @@
     // ====== Estado + Persistencia ======
     const STORAGE_KEY = 'tx_tasks_proto_v3';
     const uid = () => Math.random().toString(36).slice(2,9);
-    let state = { tasks: [], rewards: [], syncUrl: '' };
+    let state = { tasks: [], rewards: [], children: { claudia:{points:0}, xoel:{points:0} }, syncUrl: '' };
 
     function loadState(){
       try{ const raw = localStorage.getItem(STORAGE_KEY); if(raw){ state = JSON.parse(raw); } }catch(e){ console.warn('No se pudo cargar estado', e); }
+      if(!state.children) state.children = {claudia:{points:0}, xoel:{points:0}};
+      if(!state.children.claudia) state.children.claudia = {points:0};
+      if(!state.children.xoel) state.children.xoel = {points:0};
     }
     function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
@@ -147,11 +150,11 @@
       const childView = document.getElementById('view-child');
       childView.style.display = 'grid';
 
-      // Render mínimo del panel de niño usando las tareas existentes
+      // Render panel del niño
       childView.innerHTML = '';
       const header = document.createElement('div');
       header.className = 'card s12';
-      header.innerHTML = `<h2>Panel de ${name}</h2><p class="muted">Aquí verás sus tareas y recompensas.</p>`;
+      header.innerHTML = `<h2>Panel de ${name}</h2><p class="muted">Puntos actuales: <span id="child-points">${state.children[kid].points}</span>⭐</p>`;
       childView.appendChild(header);
 
       const tasksCard = document.createElement('div');
@@ -170,7 +173,38 @@
           const row = document.createElement('div');
           row.className = 'item';
           row.innerHTML = `<span>${t.name} (${t.points}⭐)</span>`;
+          const btn = document.createElement('button');
+          btn.className = 'btn';
+          btn.textContent = 'Hecho';
+          btn.onclick = ()=>{ addPoints(kid, t.points); };
+          row.appendChild(btn);
           tl.appendChild(row);
+        });
+      }
+
+      const rewardsCard = document.createElement('div');
+      rewardsCard.className = 'card s12';
+      rewardsCard.innerHTML = `<h2>Recompensas</h2><div class="list" id="child-reward-list"></div>`;
+      childView.appendChild(rewardsCard);
+
+      const rl = rewardsCard.querySelector('#child-reward-list');
+      if(!state.rewards.length){
+        const emptyR = document.createElement('div');
+        emptyR.className = 'item';
+        emptyR.innerHTML = '<span class="muted">Añade recompensas desde el Panel de padres</span>';
+        rl.appendChild(emptyR);
+      } else {
+        state.rewards.forEach(r => {
+          const row = document.createElement('div');
+          row.className = 'item';
+          row.innerHTML = `<span>${r.name} (${r.cost}⭐)</span>`;
+          const btn = document.createElement('button');
+          btn.className = state.children[kid].points < r.cost ? 'btn ghost' : 'btn secondary';
+          btn.textContent = 'Dar';
+          btn.disabled = state.children[kid].points < r.cost;
+          btn.onclick = ()=>{ redeemReward(kid, r); };
+          row.appendChild(btn);
+          rl.appendChild(row);
         });
       }
 
@@ -213,6 +247,8 @@
     }
 
     function renderHome(){
+      document.getElementById('points-claudia').textContent = state.children.claudia.points;
+      document.getElementById('points-xoel').textContent = state.children.xoel.points;
       // muestra recompensas rápidas basadas en state.rewards
       const q = document.getElementById('quick-rewards');
       q.innerHTML = '';
@@ -250,11 +286,26 @@
     }
     function removeReward(id){ state.rewards = state.rewards.filter(r=>r.id!==id); saveState(); renderAdmin(); renderHome(); }
 
+    function addPoints(kid, pts){
+      state.children[kid].points += pts;
+      saveState();
+      openChild(kid);
+      renderHome();
+    }
+
+    function redeemReward(kid, reward){
+      if(state.children[kid].points < reward.cost){ alert('No tiene suficientes puntos'); return; }
+      state.children[kid].points -= reward.cost;
+      saveState();
+      openChild(kid);
+      renderHome();
+    }
+
     function saveSyncUrl(){ state.syncUrl = (document.getElementById('sync-url').value||'').trim(); saveState(); alert('URL guardada'); }
     async function uploadData(){ alert('Subida a Sheets pendiente: usa fetch(state.syncUrl, {method:"POST", body: JSON.stringify({action:"save", data: state})})'); }
     async function downloadData(){ alert('Descarga de Sheets pendiente: usa fetch(state.syncUrl+"?action=load").then(r=>r.json())'); }
 
-    function clearAll(){ if(confirm('¿Seguro que quieres borrar todo lo guardado en este navegador?')){ localStorage.removeItem(STORAGE_KEY); state = {tasks:[], rewards:[], syncUrl:''}; renderAdmin(); renderHome(); } }
+    function clearAll(){ if(confirm('¿Seguro que quieres borrar todo lo guardado en este navegador?')){ localStorage.removeItem(STORAGE_KEY); state = {tasks:[], rewards:[], children:{claudia:{points:0}, xoel:{points:0}}, syncUrl:''}; renderAdmin(); renderHome(); } }
 
     // ====== Self-tests (no destructivos) ======
     function runSelfTests(){
