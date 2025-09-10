@@ -56,12 +56,12 @@
     <section id="view-inicio" class="grid">
       <div class="card s6">
         <h2>Claudia</h2>
-        <p class="muted">10 años</p>
+        <p class="muted">10 años · ⭐ <span id="stars-claudia">0</span></p>
         <button class="btn" onclick="openChild('claudia')">Abrir panel</button>
       </div>
       <div class="card s6">
         <h2>Xoel</h2>
-        <p class="muted">8 años</p>
+        <p class="muted">8 años · ⭐ <span id="stars-xoel">0</span></p>
         <button class="btn" onclick="openChild('xoel')">Abrir panel</button>
       </div>
       <div class="card s12">
@@ -117,10 +117,23 @@
     // ====== Estado + Persistencia ======
     const STORAGE_KEY = 'tx_tasks_proto_v3';
     const uid = () => Math.random().toString(36).slice(2,9);
-    let state = { tasks: [], rewards: [], syncUrl: '' };
+    let state = { tasks: [], rewards: [], syncUrl: '', kids: { claudia: { stars: 0 }, xoel: { stars: 0 } } };
+
+    function ensureKids(){
+      if(!state.kids){
+        state.kids = { claudia: { stars: 0 }, xoel: { stars: 0 } };
+      } else {
+        state.kids.claudia = state.kids.claudia || { stars: 0 };
+        state.kids.xoel = state.kids.xoel || { stars: 0 };
+      }
+    }
 
     function loadState(){
-      try{ const raw = localStorage.getItem(STORAGE_KEY); if(raw){ state = JSON.parse(raw); } }catch(e){ console.warn('No se pudo cargar estado', e); }
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(raw){ state = JSON.parse(raw); }
+      }catch(e){ console.warn('No se pudo cargar estado', e); }
+      ensureKids();
     }
     function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
@@ -141,17 +154,18 @@
     const CHILD_NAMES = { claudia:'Claudia', xoel:'Xoel' };
     function openChild(kid){
       const name = CHILD_NAMES[kid] || kid;
+      const child = state.kids[kid];
       // Oculta otras vistas y muestra child
       document.getElementById('view-inicio').style.display = 'none';
       document.getElementById('view-admin').style.display = 'none';
       const childView = document.getElementById('view-child');
       childView.style.display = 'grid';
 
-      // Render mínimo del panel de niño usando las tareas existentes
+      // Render panel del niño
       childView.innerHTML = '';
       const header = document.createElement('div');
       header.className = 'card s12';
-      header.innerHTML = `<h2>Panel de ${name}</h2><p class="muted">Aquí verás sus tareas y recompensas.</p>`;
+      header.innerHTML = `<h2>Panel de ${name}</h2><p class="muted">⭐ Puntos: <span id="child-stars">${child.stars}</span></p>`;
       childView.appendChild(header);
 
       const tasksCard = document.createElement('div');
@@ -170,7 +184,51 @@
           const row = document.createElement('div');
           row.className = 'item';
           row.innerHTML = `<span>${t.name} (${t.points}⭐)</span>`;
+          const btn = document.createElement('button');
+          btn.className = 'btn';
+          btn.textContent = 'Hecho';
+          btn.onclick = () => {
+            child.stars += t.points;
+            saveState();
+            document.getElementById('child-stars').textContent = child.stars;
+            renderHome();
+          };
+          row.appendChild(btn);
           tl.appendChild(row);
+        });
+      }
+
+      const rewardsCard = document.createElement('div');
+      rewardsCard.className = 'card s12';
+      rewardsCard.innerHTML = `<h2>Recompensas</h2><div class="list" id="child-reward-list"></div>`;
+      childView.appendChild(rewardsCard);
+      const rl = rewardsCard.querySelector('#child-reward-list');
+      if(!state.rewards.length){
+        const empty = document.createElement('div');
+        empty.className = 'item';
+        empty.innerHTML = '<span class="muted">Añade recompensas desde el Panel de padres</span>';
+        rl.appendChild(empty);
+      } else {
+        state.rewards.forEach(r => {
+          const row = document.createElement('div');
+          row.className = 'item';
+          row.innerHTML = `<span>${r.name} (${r.cost}⭐)</span>`;
+          const btn = document.createElement('button');
+          btn.className = 'btn';
+          btn.textContent = 'Canjear';
+          btn.onclick = () => {
+            if(child.stars >= r.cost){
+              child.stars -= r.cost;
+              saveState();
+              document.getElementById('child-stars').textContent = child.stars;
+              renderHome();
+              alert(`Has canjeado: ${r.name}`);
+            } else {
+              alert('No tienes suficientes ⭐');
+            }
+          };
+          row.appendChild(btn);
+          rl.appendChild(row);
         });
       }
 
@@ -213,6 +271,10 @@
     }
 
     function renderHome(){
+      // puntos actuales
+      document.getElementById('stars-claudia').textContent = state.kids.claudia.stars;
+      document.getElementById('stars-xoel').textContent = state.kids.xoel.stars;
+
       // muestra recompensas rápidas basadas en state.rewards
       const q = document.getElementById('quick-rewards');
       q.innerHTML = '';
@@ -254,7 +316,7 @@
     async function uploadData(){ alert('Subida a Sheets pendiente: usa fetch(state.syncUrl, {method:"POST", body: JSON.stringify({action:"save", data: state})})'); }
     async function downloadData(){ alert('Descarga de Sheets pendiente: usa fetch(state.syncUrl+"?action=load").then(r=>r.json())'); }
 
-    function clearAll(){ if(confirm('¿Seguro que quieres borrar todo lo guardado en este navegador?')){ localStorage.removeItem(STORAGE_KEY); state = {tasks:[], rewards:[], syncUrl:''}; renderAdmin(); renderHome(); } }
+    function clearAll(){ if(confirm('¿Seguro que quieres borrar todo lo guardado en este navegador?')){ localStorage.removeItem(STORAGE_KEY); state = {tasks:[], rewards:[], syncUrl:'', kids:{claudia:{stars:0}, xoel:{stars:0}}}; renderAdmin(); renderHome(); } }
 
     // ====== Self-tests (no destructivos) ======
     function runSelfTests(){
@@ -276,6 +338,15 @@
         switchTab('inicio');
         results.push(['openChild renderiza vista', childDisp !== 'none' && hasName]);
       } catch(e){ results.push(['openChild renderiza vista', false, e]); }
+      try {
+        const before = state.kids.claudia.stars;
+        openChild('claudia');
+        const btn = document.querySelector('#child-task-list .btn');
+        if(btn) btn.click();
+        const after = state.kids.claudia.stars;
+        switchTab('inicio');
+        results.push(['Completar tarea suma puntos', after > before]);
+      } catch(e){ results.push(['Completar tarea suma puntos', false, e]); }
       console.group('Self-tests');
       results.forEach(([name, ok, err])=> ok ? console.log('✔', name) : console.error('✘', name, err||''));
       console.groupEnd();
